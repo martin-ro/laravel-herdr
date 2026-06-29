@@ -1,0 +1,51 @@
+{
+    "name": "martinroph/laravel-herdr",
+    "description": "A fluent, Laravel-style client for the Herdr terminal workspace socket API.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "herdr", "terminal", "socket", "multiplexer", "agents"],
+    "authors": [
+        {
+            "name": "Martin Roph",
+            "email": "martinroph@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0 || ^9.0 || ^10.0",
+        "phpunit/phpunit": "^10.5 || ^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Herdr\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Herdr\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Herdr\\HerdrServiceProvider"
+            ],
+            "aliases": {
+                "Herdr": "Herdr\\Facades\\Herdr"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
