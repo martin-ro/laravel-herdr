@@ -37,7 +37,7 @@ This is a private package. Add the GitHub repository to your app's
 ```json
 {
     "repositories": [
-        { "type": "vcs", "url": "git@github.com:martinroph/laravel-herdr.git" }
+        { "type": "vcs", "url": "git@github.com:martin-ro/laravel-herdr.git" }
     ]
 }
 ```
@@ -45,7 +45,7 @@ This is a private package. Add the GitHub repository to your app's
 Then require it:
 
 ```bash
-composer require martinroph/laravel-herdr:dev-main
+composer require martin-ro/laravel-herdr:dev-main
 ```
 
 The service provider and `Herdr` facade are auto-discovered. To tweak defaults,

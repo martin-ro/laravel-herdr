@@ -1,5 +1,5 @@
 {
-    "name": "martinroph/laravel-herdr",
+    "name": "martin-ro/laravel-herdr",
     "description": "A fluent, Laravel-style client for the Herdr terminal workspace socket API.",
     "type": "library",
     "license": "MIT",
