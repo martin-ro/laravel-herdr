@@ -34,10 +34,20 @@ class RequestException extends HerdrException
     }
 
     /**
-     * The Herdr error code, e.g. "not_found", "invalid_params".
+     * The Herdr error code, e.g. "pane_not_found", "invalid_request".
      */
     public function code(): string
     {
         return $this->errorCode;
+    }
+
+    /**
+     * Whether this represents a "not found" error. Herdr namespaces these per
+     * resource, e.g. "pane_not_found", "workspace_not_found", as well as a
+     * bare "not_found".
+     */
+    public function isNotFound(): bool
+    {
+        return $this->errorCode === 'not_found' || str_ends_with($this->errorCode, '_not_found');
     }
 }

@@ -48,7 +48,7 @@ class Panes
         try {
             return $this->get($id);
         } catch (RequestException $e) {
-            if ($e->code() === 'not_found') {
+            if ($e->isNotFound()) {
                 return null;
             }
 

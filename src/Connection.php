@@ -2,66 +2,96 @@
 
 namespace Herdr;
 
+use Closure;
 use Herdr\Exceptions\ConnectionException;
 use Herdr\Exceptions\RequestException;
 use Herdr\Transport\Transport;
 
 /**
- * Wraps a {@see Transport} with Herdr's JSON-RPC-ish semantics: it assigns a
- * unique id to every request, reads lines until the matching response arrives,
- * and parks any unsolicited events (which carry no id) on a queue for the
- * events stream to consume later.
+ * Wraps the transport with Herdr's protocol semantics.
+ *
+ * Herdr is **one request per connection**: the server writes a single response
+ * and then closes the socket. So every {@see request()} opens a fresh transport,
+ * sends, reads the matching response and closes. Event subscriptions are the
+ * exception — after {@see openStream()} the server keeps the socket open and
+ * pushes id-less event lines, which {@see nextEvent()} consumes.
  */
 class Connection
 {
+    /** @var Closure(): Transport */
+    private Closure $factory;
+
     private int $sequence = 0;
 
     /**
-     * Events received while awaiting a response, in arrival order.
+     * The persistent transport used for event streaming, if any.
+     */
+    private ?Transport $stream = null;
+
+    /**
+     * Events seen while awaiting a response (kept for completeness; on a
+     * one-shot RPC connection none normally arrive).
      *
      * @var list<array<string, mixed>>
      */
     private array $eventQueue = [];
 
-    public function __construct(
-        private readonly Transport $transport,
-        private readonly string $idPrefix = 'req',
-    ) {
-    }
-
-    public function transport(): Transport
+    /**
+     * @param  Closure(): Transport|Transport  $transport  A factory that opens a
+     *         fresh transport per request, or a single transport to reuse (the
+     *         latter is used for the in-memory fake in tests).
+     */
+    public function __construct(Closure|Transport $transport, private readonly string $idPrefix = 'req')
     {
-        return $this->transport;
+        $this->factory = $transport instanceof Transport
+            ? fn () => $transport
+            : $transport;
     }
 
     /**
-     * Send a request and return its `result` payload.
+     * Send a request on a fresh connection and return its `result` payload.
      *
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      *
-     * @throws RequestException   when Herdr replies with an error.
+     * @throws RequestException    when Herdr replies with an error.
      * @throws ConnectionException on transport failure.
      */
     public function request(string $method, array $params = []): array
     {
-        $id = $this->nextId();
+        $transport = ($this->factory)();
 
-        $message = [
-            'id' => $id,
-            'method' => $method,
-            // Cast so empty params serialise as {} rather than [].
-            'params' => (object) $params,
-        ];
+        try {
+            $id = $this->writeMessage($transport, $method, $params);
 
-        $this->transport->write($this->encode($message));
-
-        return $this->awaitResponse($id, $method);
+            return $this->awaitResponse($transport, $id, $method);
+        } finally {
+            $transport->close();
+        }
     }
 
     /**
-     * Return the next event, draining the buffer before reading the socket.
-     * Returns null when the connection closes with no events left.
+     * Open a long-lived streaming connection (used for events.subscribe),
+     * returning the acknowledgement result. The connection is held open so
+     * {@see nextEvent()} can read pushed events from it.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function openStream(string $method, array $params = []): array
+    {
+        $this->closeStream();
+
+        $this->stream = ($this->factory)();
+
+        $id = $this->writeMessage($this->stream, $method, $params);
+
+        return $this->awaitResponse($this->stream, $id, $method);
+    }
+
+    /**
+     * Return the next event from the open stream, blocking until one arrives.
+     * Returns null when no stream is open or the stream has closed.
      *
      * @return array<string, mixed>|null
      */
@@ -71,8 +101,12 @@ class Connection
             return array_shift($this->eventQueue);
         }
 
+        if (! $this->stream instanceof Transport) {
+            return null;
+        }
+
         while (true) {
-            $line = $this->transport->readLine();
+            $line = $this->stream->readLine();
 
             if ($line === null) {
                 return null;
@@ -80,39 +114,46 @@ class Connection
 
             $message = $this->decode($line);
 
-            if ($message === null) {
-                continue;
+            if ($message !== null) {
+                return $message;
             }
-
-            return $message;
         }
     }
 
-    /**
-     * Drain and return every event buffered so far without blocking.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function flushEvents(): array
+    public function closeStream(): void
     {
-        $events = $this->eventQueue;
-        $this->eventQueue = [];
+        if ($this->stream instanceof Transport) {
+            $this->stream->close();
+            $this->stream = null;
+        }
 
-        return $events;
+        $this->eventQueue = [];
     }
 
-    public function close(): void
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function writeMessage(Transport $transport, string $method, array $params): string
     {
-        $this->transport->close();
+        $id = $this->nextId();
+
+        $transport->write($this->encode([
+            'id' => $id,
+            'method' => $method,
+            // Cast so empty params serialise as {} rather than [].
+            'params' => (object) $params,
+        ]));
+
+        return $id;
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function awaitResponse(string $id, string $method): array
+    private function awaitResponse(Transport $transport, string $id, string $method): array
     {
         while (true) {
-            $line = $this->transport->readLine();
+            $line = $transport->readLine();
 
             if ($line === null) {
                 throw ConnectionException::closed();
@@ -124,7 +165,6 @@ class Connection
                 continue;
             }
 
-            // A response for our request id.
             if (($message['id'] ?? null) === $id) {
                 if (isset($message['error']) && is_array($message['error'])) {
                     throw RequestException::fromError($message['error'], $method);
@@ -133,8 +173,7 @@ class Connection
                 return (array) ($message['result'] ?? []);
             }
 
-            // Anything else (an unsolicited event, or a late reply for another
-            // request) is parked for the event stream.
+            // An unsolicited event or a stray line: park it.
             $this->eventQueue[] = $message;
         }
     }

@@ -12,6 +12,9 @@ use Illuminate\Support\Collection;
  * @property-read string|null $workspace_id
  * @property-read string|null $tab_id
  * @property-read string|null $terminal_id
+ * @property-read string|null $cwd
+ * @property-read string|null $foreground_cwd
+ * @property-read string|null $agent
  * @property-read string|null $agent_status
  * @property-read bool|null   $focused
  * @property-read int|null    $revision
@@ -27,6 +30,11 @@ class Pane extends Data
         return $this->get('pane_id');
     }
 
+    public function terminalId(): ?string
+    {
+        return $this->get('terminal_id');
+    }
+
     public function workspaceId(): ?string
     {
         return $this->get('workspace_id');
@@ -35,6 +43,24 @@ class Pane extends Data
     public function tabId(): ?string
     {
         return $this->get('tab_id');
+    }
+
+    public function cwd(): ?string
+    {
+        return $this->get('cwd');
+    }
+
+    public function foregroundCwd(): ?string
+    {
+        return $this->get('foreground_cwd');
+    }
+
+    /**
+     * The kind of agent running in this pane (e.g. "claude"), if any.
+     */
+    public function agent(): ?string
+    {
+        return $this->get('agent');
     }
 
     public function agentStatus(): ?string
@@ -62,19 +88,23 @@ class Pane extends Data
     }
 
     /**
-     * Read terminal output (pane.read).
+     * Read terminal output (pane.read). The result payload nests the read under
+     * a "read" key, which is unwrapped here so ->text()/->lines() work directly.
      *
-     * @param  'recent'|'screen'|'scrollback'|string  $source
+     * @param  'visible'|'recent'|'recent-unwrapped'|string  $source
+     * @param  'text'|'ansi'|string  $format
      */
-    public function read(?int $lines = null, string $source = 'recent'): Result
+    public function read(?int $lines = null, string $source = 'recent', string $format = 'text'): Result
     {
-        $params = ['source' => $source];
+        $params = ['source' => $source, 'format' => $format];
 
         if ($lines !== null) {
             $params['lines'] = $lines;
         }
 
-        return Result::fromResult($this->call('pane.read', $params), $this->connection);
+        $result = $this->call('pane.read', $params);
+
+        return new Result($result['read'] ?? $result, $this->connection);
     }
 
     /**
@@ -173,8 +203,8 @@ class Pane extends Data
     /**
      * Split this pane and return the new pane (pane.split).
      *
-     * @param  'left'|'right'|'up'|'down'|string  $direction
-     * @param  array<string, mixed>  $options  e.g. ['env' => [...], 'command' => '...']
+     * @param  'right'|'down'|string  $direction
+     * @param  array<string, mixed>  $options  e.g. ['env' => [...], 'cwd' => '...', 'focus' => false]
      */
     public function split(string $direction = 'right', ?float $ratio = null, array $options = []): static
     {
@@ -210,9 +240,15 @@ class Pane extends Data
         return Result::fromResult($this->call('pane.neighbor', ['direction' => $direction]), $this->connection);
     }
 
-    public function zoom(bool $zoom = true): static
+    /**
+     * Zoom the pane (pane.zoom). With no arguments this toggles zoom; pass
+     * ['on' => true] / ['off' => true] to set it explicitly.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    public function zoom(array $params = []): static
     {
-        $this->call('pane.zoom', ['zoom' => $zoom]);
+        $this->call('pane.zoom', $params);
 
         return $this;
     }
@@ -229,14 +265,34 @@ class Pane extends Data
         return $this;
     }
 
-    public function swap(string $targetPaneId): static
+    /**
+     * Swap this pane with its neighbour in a direction (pane.swap).
+     *
+     * @param  'left'|'right'|'up'|'down'|string  $direction
+     */
+    public function swap(string $direction): static
     {
-        $this->call('pane.swap', ['target' => $targetPaneId]);
+        $this->call('pane.swap', ['direction' => $direction]);
 
         return $this;
     }
 
     /**
+     * Swap two panes explicitly (pane.swap with source/target).
+     */
+    public function swapWith(string $targetPaneId): static
+    {
+        $this->connection()->request('pane.swap', [
+            'source_pane' => $this->id(),
+            'target_pane' => $targetPaneId,
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Move this pane (pane.move), e.g. ['tab' => 'w1:t2', 'split' => 'down'].
+     *
      * @param  array<string, mixed>  $params
      */
     public function move(array $params): static
@@ -246,11 +302,11 @@ class Pane extends Data
         return $this;
     }
 
-    public function rename(string $title): static
+    public function rename(string $label): static
     {
-        $this->call('pane.rename', ['title' => $title]);
+        $this->call('pane.rename', ['label' => $label]);
 
-        return $this->fill(['title' => $title]);
+        return $this->fill(['label' => $label]);
     }
 
     /* ----------------------------------------------------------------------

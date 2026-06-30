@@ -138,9 +138,12 @@ class HerdrManager
         return new Agents($this->connection);
     }
 
-    public function agent(?string $id = null): Agent
+    /**
+     * A handle to an agent by target (terminal id, unique agent name, or pane id).
+     */
+    public function agent(?string $target = null): Agent
     {
-        return new Agent($id === null ? [] : ['agent_id' => $id], $this->connection);
+        return new Agent($target === null ? [] : ['target' => $target], $this->connection);
     }
 
     public function worktrees(): Worktrees

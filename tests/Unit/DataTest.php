@@ -44,14 +44,15 @@ class DataTest extends TestCase
         $workspaces = Workspace::collectionFromResult([
             'type' => 'workspace_list',
             'workspaces' => [
-                ['workspace_id' => 'w1', 'name' => 'api'],
-                ['workspace_id' => 'w2', 'name' => 'web'],
+                ['workspace_id' => 'w1', 'label' => 'api'],
+                ['workspace_id' => 'w2', 'label' => 'web'],
             ],
         ]);
 
         $this->assertCount(2, $workspaces);
         $this->assertSame('w1', $workspaces->first()->id());
-        $this->assertSame('web', $workspaces->last()->name());
+        $this->assertSame('web', $workspaces->last()->label());
+        $this->assertSame('web', $workspaces->last()->name()); // alias
     }
 
     public function test_collection_from_result_falls_back_to_the_first_list(): void

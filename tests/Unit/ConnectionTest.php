@@ -7,15 +7,14 @@ use Herdr\Exceptions\ConnectionException;
 use Herdr\Exceptions\RequestException;
 use Herdr\Testing\FakeResponse;
 use Herdr\Transport\FakeTransport;
+use Herdr\Transport\Transport;
 use PHPUnit\Framework\TestCase;
 
 class ConnectionTest extends TestCase
 {
     public function test_it_sends_a_well_formed_request_and_returns_the_result(): void
     {
-        $transport = new FakeTransport([
-            'ping' => ['type' => 'pong'],
-        ]);
+        $transport = new FakeTransport(['ping' => ['type' => 'pong']]);
         $connection = new Connection($transport);
 
         $result = $connection->request('ping');
@@ -31,13 +30,45 @@ class ConnectionTest extends TestCase
 
     public function test_it_increments_request_ids(): void
     {
-        $connection = new Connection(new FakeTransport());
+        $transport = new FakeTransport();
+        $connection = new Connection($transport);
 
         $connection->request('ping');
         $connection->request('ping');
 
-        $this->assertSame('req_1', json_decode($connection->transport()->written[0], true)['id']);
-        $this->assertSame('req_2', json_decode($connection->transport()->written[1], true)['id']);
+        $this->assertSame('req_1', json_decode($transport->written[0], true)['id']);
+        $this->assertSame('req_2', json_decode($transport->written[1], true)['id']);
+    }
+
+    public function test_each_request_uses_a_fresh_transport(): void
+    {
+        // Herdr is one-request-per-connection: the connection must open a new
+        // transport for every request and close it afterwards.
+        $opened = 0;
+        $closed = 0;
+
+        $connection = new Connection(function () use (&$opened, &$closed) {
+            $opened++;
+
+            return new class($closed) extends FakeTransport {
+                public function __construct(private int &$closedCounter)
+                {
+                    parent::__construct(['ping' => ['type' => 'pong']]);
+                }
+
+                public function close(): void
+                {
+                    $this->closedCounter++;
+                    parent::close();
+                }
+            };
+        });
+
+        $connection->request('ping');
+        $connection->request('ping');
+
+        $this->assertSame(2, $opened);
+        $this->assertSame(2, $closed);
     }
 
     public function test_it_throws_a_request_exception_on_error_responses(): void
@@ -57,46 +88,53 @@ class ConnectionTest extends TestCase
         }
     }
 
-    public function test_it_buffers_events_received_while_awaiting_a_response(): void
+    public function test_events_stream_over_a_held_connection(): void
     {
-        $transport = new FakeTransport();
-        // Queue an unsolicited event *before* the matching response.
-        $transport->pushEvent(['type' => 'pane.exited', 'pane_id' => 'w1:p1']);
-
+        $transport = new FakeTransport([
+            'events.subscribe' => ['type' => 'subscription_started'],
+        ]);
         $connection = new Connection($transport);
-        // The fake answers ping after the event, so the connection must skip
-        // the event (no id), buffer it, and still resolve the ping.
-        $result = $connection->request('ping');
 
-        $this->assertSame([], $result);
+        $ack = $connection->openStream('events.subscribe', ['subscriptions' => [['type' => 'pane.exited']]]);
+        $this->assertSame('subscription_started', $ack['type']);
+
+        $transport->pushEvent(['type' => 'pane.exited', 'pane_id' => 'w1:p1']);
 
         $event = $connection->nextEvent();
         $this->assertSame('pane.exited', $event['type']);
+        $this->assertSame('w1:p1', $event['pane_id']);
     }
 
     public function test_it_throws_when_the_connection_closes_before_responding(): void
     {
-        // A transport that never answers: readLine returns null immediately.
-        $transport = new FakeTransport();
         $connection = new Connection(new ClosingTransport());
 
         $this->expectException(ConnectionException::class);
         $connection->request('ping');
-
-        unset($transport);
     }
 }
 
-class ClosingTransport extends FakeTransport
+class ClosingTransport implements Transport
 {
+    /** @var list<string> */
+    public array $written = [];
+
     public function write(string $line): void
     {
-        // Record but never produce a response line.
         $this->written[] = $line;
     }
 
     public function readLine(): ?string
     {
         return null;
+    }
+
+    public function isConnected(): bool
+    {
+        return false;
+    }
+
+    public function close(): void
+    {
     }
 }

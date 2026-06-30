@@ -31,12 +31,22 @@ class EventStream
      */
     public function subscribe(array $subscriptions): Result
     {
+        // Unlike ordinary requests, a subscription holds the connection open so
+        // the server can push events down it afterwards.
         return Result::fromResult(
-            $this->connection->request('events.subscribe', [
+            $this->connection->openStream('events.subscribe', [
                 'subscriptions' => $this->normalize($subscriptions),
             ]),
             $this->connection,
         );
+    }
+
+    /**
+     * Close the underlying event stream.
+     */
+    public function close(): void
+    {
+        $this->connection->closeStream();
     }
 
     /**

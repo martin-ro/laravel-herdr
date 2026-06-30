@@ -14,8 +14,8 @@ class FluentApiTest extends TestCase
         Herdr::fake([
             'workspace.list' => [
                 'workspaces' => [
-                    ['workspace_id' => 'w1', 'name' => 'api', 'focused' => true],
-                    ['workspace_id' => 'w2', 'name' => 'web'],
+                    ['workspace_id' => 'w1', 'label' => 'api', 'focused' => true],
+                    ['workspace_id' => 'w2', 'label' => 'web'],
                 ],
             ],
         ]);
@@ -23,7 +23,7 @@ class FluentApiTest extends TestCase
         $workspaces = Herdr::workspaces()->all();
 
         $this->assertCount(2, $workspaces);
-        $this->assertSame('api', $workspaces->first()->name());
+        $this->assertSame('api', $workspaces->first()->label());
         $this->assertSame('w1', Herdr::workspaces()->focused()->id());
     }
 
@@ -75,8 +75,9 @@ class FluentApiTest extends TestCase
 
     public function test_read_returns_a_permissive_result(): void
     {
+        // pane.read nests its payload under a "read" key, as the real server does.
         Herdr::fake([
-            'pane.read' => ['type' => 'pane_output', 'lines' => ['one', 'two']],
+            'pane.read' => ['type' => 'pane_read', 'read' => ['text' => "one\ntwo", 'lines' => ['one', 'two']]],
         ]);
 
         $output = Herdr::pane('w1:p2')->read(lines: 50, source: 'recent');
@@ -87,7 +88,8 @@ class FluentApiTest extends TestCase
         Herdr::assertSent(fn (string $method, array $params) => $method === 'pane.read'
             && $params['pane_id'] === 'w1:p2'
             && $params['lines'] === 50
-            && $params['source'] === 'recent');
+            && $params['source'] === 'recent'
+            && $params['format'] === 'text');
     }
 
     public function test_notify_builds_the_expected_params(): void
@@ -105,8 +107,9 @@ class FluentApiTest extends TestCase
 
     public function test_errors_bubble_up_as_request_exceptions(): void
     {
+        // Herdr namespaces not-found errors per resource, e.g. "pane_not_found".
         Herdr::fake([
-            'pane.get' => FakeResponse::error('not_found', 'pane not found'),
+            'pane.get' => FakeResponse::error('pane_not_found', 'pane w9:p9 not found'),
         ]);
 
         $this->assertNull(Herdr::panes()->find('w9:p9'));

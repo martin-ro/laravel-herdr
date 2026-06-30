@@ -3,12 +3,14 @@
 namespace Herdr\Data;
 
 /**
- * A live Herdr git worktree.
+ * A live Herdr git worktree. Worktrees have no id; they are identified by their
+ * path and/or branch, and the workspace they're open in is "open_workspace_id".
  *
- * @property-read string|null $worktree_id
- * @property-read string|null $workspace_id
- * @property-read string|null $branch
  * @property-read string|null $path
+ * @property-read string|null $branch
+ * @property-read string|null $label
+ * @property-read string|null $open_workspace_id
+ * @property-read bool|null   $is_linked_worktree
  */
 class Worktree extends Data
 {
@@ -16,9 +18,9 @@ class Worktree extends Data
 
     public const LIST_KEYS = ['worktrees'];
 
-    public function id(): ?string
+    public function path(): ?string
     {
-        return $this->get('worktree_id') ?? $this->get('id');
+        return $this->get('path');
     }
 
     public function branch(): ?string
@@ -26,13 +28,26 @@ class Worktree extends Data
         return $this->get('branch');
     }
 
-    public function path(): ?string
+    public function label(): ?string
     {
-        return $this->get('path');
+        return $this->get('label');
     }
 
     /**
-     * Open this worktree (worktree.open).
+     * The id of the workspace this worktree is currently open in, if any.
+     */
+    public function workspaceId(): ?string
+    {
+        return $this->get('open_workspace_id') ?? $this->get('workspace_id');
+    }
+
+    public function isLinked(): bool
+    {
+        return (bool) $this->get('is_linked_worktree', false);
+    }
+
+    /**
+     * Open this worktree in a workspace (worktree.open).
      *
      * @param  array<string, mixed>  $params
      */
@@ -44,7 +59,7 @@ class Worktree extends Data
     /**
      * Remove this worktree (worktree.remove).
      *
-     * @param  array<string, mixed>  $params
+     * @param  array<string, mixed>  $params  e.g. ['force' => true]
      */
     public function remove(array $params = []): void
     {
@@ -58,8 +73,7 @@ class Worktree extends Data
     protected function call(string $method, array $params = []): array
     {
         $identity = array_filter([
-            'worktree_id' => $this->id(),
-            'workspace_id' => $this->get('workspace_id'),
+            'workspace_id' => $this->workspaceId(),
             'branch' => $this->branch(),
             'path' => $this->path(),
         ], fn ($v) => $v !== null);

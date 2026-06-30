@@ -27,17 +27,21 @@ class Agents
         return Agent::collectionFromResult($this->connection->request('agent.list', $filters), $this->connection);
     }
 
-    public function get(string $id): Agent
+    /**
+     * Fetch an agent by target (agent.get). A target is a terminal id, a
+     * unique agent name, or a pane id.
+     */
+    public function get(string $target): Agent
     {
-        return Agent::fromResult($this->connection->request('agent.get', ['agent_id' => $id]), $this->connection);
+        return Agent::fromResult($this->connection->request('agent.get', ['target' => $target]), $this->connection);
     }
 
-    public function find(string $id): ?Agent
+    public function find(string $target): ?Agent
     {
         try {
-            return $this->get($id);
+            return $this->get($target);
         } catch (RequestException $e) {
-            if ($e->code() === 'not_found') {
+            if ($e->isNotFound()) {
                 return null;
             }
 
@@ -46,12 +50,16 @@ class Agents
     }
 
     /**
-     * Start an agent (agent.start).
+     * Start an agent of the given kind (agent.start), e.g. "claude".
      *
-     * @param  array<string, mixed>  $params
+     * @param  array<string, mixed>  $options  e.g.
+     *   ['workspace_id' => 'wA', 'split' => 'right', 'cwd' => '...', 'env' => [...]]
      */
-    public function start(array $params = []): Agent
+    public function start(string $name, array $options = []): Agent
     {
-        return Agent::fromResult($this->connection->request('agent.start', $params), $this->connection);
+        return Agent::fromResult(
+            $this->connection->request('agent.start', array_merge(['name' => $name], $options)),
+            $this->connection,
+        );
     }
 }

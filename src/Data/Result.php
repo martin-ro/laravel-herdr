@@ -23,7 +23,7 @@ class Result extends Data
      */
     public function text(): string
     {
-        foreach (['text', 'output', 'content', 'data'] as $key) {
+        foreach (['text', 'read.text', 'output', 'content', 'data'] as $key) {
             $value = $this->get($key);
 
             if (is_string($value)) {
@@ -47,13 +47,13 @@ class Result extends Data
      */
     public function lines(): array
     {
-        $value = $this->get('lines') ?? $this->get('rows');
+        $value = $this->get('lines') ?? $this->get('read.lines') ?? $this->get('rows');
 
         if (is_array($value)) {
             return array_values(array_map('strval', $value));
         }
 
-        $text = $this->get('text') ?? $this->get('output') ?? $this->get('content');
+        $text = $this->get('text') ?? $this->get('read.text') ?? $this->get('output') ?? $this->get('content');
 
         if (is_string($text)) {
             return explode("\n", $text);

@@ -9,7 +9,10 @@ use Illuminate\Support\Collection;
  *
  * @property-read string|null $tab_id
  * @property-read string|null $workspace_id
- * @property-read string|null $name
+ * @property-read string|null $label
+ * @property-read int|null    $number
+ * @property-read int|null    $pane_count
+ * @property-read string|null $agent_status
  * @property-read bool|null   $focused
  */
 class Tab extends Data
@@ -23,9 +26,25 @@ class Tab extends Data
         return $this->get('tab_id');
     }
 
+    /**
+     * The tab's display label (Herdr's field is "label").
+     */
+    public function label(): ?string
+    {
+        return $this->get('label');
+    }
+
+    /**
+     * Alias for {@see label()}.
+     */
     public function name(): ?string
     {
-        return $this->get('name');
+        return $this->label();
+    }
+
+    public function isFocused(): bool
+    {
+        return (bool) $this->get('focused', false);
     }
 
     public function refresh(): static
@@ -40,11 +59,9 @@ class Tab extends Data
         return $this;
     }
 
-    public function rename(string $name): static
+    public function rename(string $label): static
     {
-        $this->call('tab.rename', ['name' => $name]);
-
-        return $this->fill(['name' => $name]);
+        return $this->fill(static::fromResult($this->call('tab.rename', ['label' => $label]))->toArray());
     }
 
     public function close(): void

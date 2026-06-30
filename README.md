@@ -85,12 +85,12 @@ use Herdr\Facades\Herdr;
 
 Herdr::workspaces()->all();              // Collection<Workspace>
 Herdr::workspaces()->focused();          // ?Workspace
-$ws = Herdr::workspaces()->create(['name' => 'api']);
+$ws = Herdr::workspaces()->create(['label' => 'api']);
 
 $ws->rename('api-v2');
 $ws->tabs();                             // Collection<Tab>
 $ws->panes();                            // Collection<Pane>
-$tab = $ws->createTab(['name' => 'tests']);
+$tab = $ws->createTab(['label' => 'tests']);
 
 Herdr::panes()->all();                   // Collection<Pane>
 Herdr::panes()->current();               // the focused pane
@@ -118,7 +118,7 @@ $pane->sendKeys('ctrl+c');               // key combos: enter, esc, ctrl+c, f1..
 $pane->sendKeys(['g', 'g']);             // a sequence
 
 $pane->read(lines: 100)->text();         // recent output as a string
-$pane->read(source: 'scrollback')->lines();
+$pane->read(source: 'recent-unwrapped')->lines();  // sources: visible|recent|recent-unwrapped
 
 $pane->waitForOutput('Compiled successfully');
 
@@ -134,14 +134,22 @@ $pane->close();
 
 ### Agents
 
+Agents have no id of their own — they're addressed by a **target** (a terminal
+id, a unique agent name, or a pane id). The `agent` field is the kind, e.g.
+`"claude"`.
+
 ```php
 Herdr::agents()->all();                  // Collection<Agent>
-$agent = Herdr::agents()->start(['pane_id' => 'w1:p1', 'agent' => 'claude']);
+$agent = Herdr::agents()->start('claude', ['workspace_id' => 'wA', 'split' => 'right']);
 
-$agent->send('summarise the failing test');
+Herdr::agent('wA:p2')->send('summarise the failing test');  // target by pane id
+$agent = Herdr::agents()->get('term_abc123');               // ...or terminal id
+
 $agent->read()->text();
 $agent->explain();
 $agent->focus();
+$agent->kind();                          // "claude"
+$agent->status();                        // idle|working|blocked|unknown
 ```
 
 Report agent state for a pane you control (e.g. from a custom CI runner):
@@ -237,12 +245,14 @@ use Herdr\Exceptions\RequestException;    // Herdr replied with an { error } pay
 try {
     Herdr::pane('w9:p9')->focus();
 } catch (RequestException $e) {
-    $e->code();      // e.g. "not_found"
+    $e->code();         // e.g. "pane_not_found", "invalid_request"
+    $e->isNotFound();   // true for not_found / *_not_found codes
     $e->getMessage();
 }
 ```
 
-`find()` helpers swallow `not_found` and return `null`:
+`find()` helpers swallow not-found errors (Herdr namespaces them per resource,
+e.g. `pane_not_found`, `workspace_not_found`) and return `null`:
 
 ```php
 Herdr::panes()->find('w9:p9');           // ?Pane
@@ -260,8 +270,8 @@ use Herdr\Facades\Herdr;
 use Herdr\Testing\FakeResponse;
 
 Herdr::fake([
-    'workspace.list' => ['workspaces' => [['workspace_id' => 'w1', 'name' => 'api']]],
-    'pane.get'       => FakeResponse::error('not_found', 'pane not found'),
+    'workspace.list' => ['workspaces' => [['workspace_id' => 'w1', 'label' => 'api']]],
+    'pane.get'       => FakeResponse::error('pane_not_found', 'pane not found'),
     'pane.read'      => fn (array $params) => ['lines' => ["ran {$params['pane_id']}"]],
 ]);
 
@@ -302,12 +312,18 @@ HerdrManager ──┬─ ping()/call()/result()        low-level escape hatch
                ├─ events()                        subscribe + stream
                └─ fake()/assertSent()             test doubles
 
-Connection      assigns request ids, correlates responses, buffers events
+Connection      one socket per request; assigns ids, correlates responses;
+   │            holds a persistent socket for event streams
    └─ Transport (interface)
         ├─ SocketTransport   real Unix socket / named pipe, buffered line reader
         └─ FakeTransport     in-memory, for tests
 ```
 
+- **One request per connection.** Herdr serves a single response per socket and
+  then closes it, so each call opens a fresh connection. Subscriptions are the
+  exception: the socket stays open and the server pushes events down it. The
+  `Herdr` manager is a safe long-lived singleton — it opens connections on
+  demand, so you never hold a dead socket.
 - **Framing** is exact: one JSON object per line, terminated by `\n`; the reader
   buffers partial reads and splits multiple messages that arrive in one chunk.
 - **Correlation**: each request gets a unique `id`; responses are matched by it,
@@ -315,6 +331,9 @@ Connection      assigns request ids, correlates responses, buffers events
   stream.
 - **Data objects** wrap raw attributes permissively, so the package keeps
   working even where Herdr's response fields are undocumented or evolve.
+
+> Field names and the connection model in this package were verified against a
+> live **Herdr 0.7.1** server (socket protocol 14).
 
 ## License
 

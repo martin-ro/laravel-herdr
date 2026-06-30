@@ -20,16 +20,20 @@ class ConnectionFactory
 
     /**
      * Create a connection, optionally bound to a named session.
+     *
+     * Because Herdr serves one request per socket, the connection is given a
+     * factory that opens a fresh {@see SocketTransport} for every request.
      */
     public function make(?string $session = null): Connection
     {
-        $transport = new SocketTransport(
-            path: $this->resolvePath($session),
-            connectTimeout: (float) ($this->config['connect_timeout'] ?? 5.0),
-            readTimeout: $this->config['read_timeout'] ?? null,
-        );
+        $path = $this->resolvePath($session);
+        $connectTimeout = (float) ($this->config['connect_timeout'] ?? 5.0);
+        $readTimeout = $this->config['read_timeout'] ?? null;
 
-        return $this->fromTransport($transport);
+        return new Connection(
+            fn () => new SocketTransport($path, $connectTimeout, $readTimeout),
+            (string) ($this->config['id_prefix'] ?? 'req'),
+        );
     }
 
     /**
