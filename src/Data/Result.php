@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 /**
  * A generic, permissive wrapper around any Herdr result payload. Returned by

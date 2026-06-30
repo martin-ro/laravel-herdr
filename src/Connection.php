@@ -1,11 +1,11 @@
 <?php
 
-namespace Herdr;
+namespace MartinRo\Herdr;
 
 use Closure;
-use Herdr\Exceptions\ConnectionException;
-use Herdr\Exceptions\RequestException;
-use Herdr\Transport\Transport;
+use MartinRo\Herdr\Exceptions\ConnectionException;
+use MartinRo\Herdr\Exceptions\RequestException;
+use MartinRo\Herdr\Transport\Transport;
 
 /**
  * Wraps the transport with Herdr's protocol semantics.

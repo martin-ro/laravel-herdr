@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr\Tests\Unit;
+namespace MartinRo\Herdr\Tests\Unit;
 
-use Herdr\Exceptions\ConnectionException;
-use Herdr\Transport\SocketTransport;
+use MartinRo\Herdr\Exceptions\ConnectionException;
+use MartinRo\Herdr\Transport\SocketTransport;
 use PHPUnit\Framework\TestCase;
 
 class SocketTransportTest extends TestCase

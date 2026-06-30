@@ -1,11 +1,11 @@
 <?php
 
-namespace Herdr\Tests\Feature;
+namespace MartinRo\Herdr\Tests\Feature;
 
-use Herdr\Data\Pane;
-use Herdr\Facades\Herdr;
-use Herdr\Testing\FakeResponse;
-use Herdr\Tests\TestCase;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\Facades\Herdr;
+use MartinRo\Herdr\Testing\FakeResponse;
+use MartinRo\Herdr\Tests\TestCase;
 
 class FluentApiTest extends TestCase
 {

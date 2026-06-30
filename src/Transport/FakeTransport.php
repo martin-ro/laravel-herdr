@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr\Transport;
+namespace MartinRo\Herdr\Transport;
 
 use Closure;
-use Herdr\Testing\FakeResponse;
+use MartinRo\Herdr\Testing\FakeResponse;
 
 /**
  * An in-memory transport for tests. It records every request written to it and

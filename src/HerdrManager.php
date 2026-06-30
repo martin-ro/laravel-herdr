@@ -1,27 +1,27 @@
 <?php
 
-namespace Herdr;
+namespace MartinRo\Herdr;
 
-use Herdr\Data\Agent;
-use Herdr\Data\Pane;
-use Herdr\Data\Result;
-use Herdr\Data\Tab;
-use Herdr\Data\Workspace;
-use Herdr\Resources\Agents;
-use Herdr\Resources\EventStream;
-use Herdr\Resources\Panes;
-use Herdr\Resources\Plugins;
-use Herdr\Resources\Server;
-use Herdr\Resources\Tabs;
-use Herdr\Resources\Workspaces;
-use Herdr\Resources\Worktrees;
-use Herdr\Testing\FakeResponse;
-use Herdr\Transport\FakeTransport;
+use MartinRo\Herdr\Data\Agent;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\Data\Result;
+use MartinRo\Herdr\Data\Tab;
+use MartinRo\Herdr\Data\Workspace;
+use MartinRo\Herdr\Resources\Agents;
+use MartinRo\Herdr\Resources\EventStream;
+use MartinRo\Herdr\Resources\Panes;
+use MartinRo\Herdr\Resources\Plugins;
+use MartinRo\Herdr\Resources\Server;
+use MartinRo\Herdr\Resources\Tabs;
+use MartinRo\Herdr\Resources\Workspaces;
+use MartinRo\Herdr\Resources\Worktrees;
+use MartinRo\Herdr\Testing\FakeResponse;
+use MartinRo\Herdr\Transport\FakeTransport;
 use PHPUnit\Framework\Assert;
 
 /**
  * The fluent entry point to the Herdr socket API. Resolved from the container
- * as the singleton "herdr" and exposed through the {@see \Herdr\Facades\Herdr}
+ * as the singleton "herdr" and exposed through the {@see \MartinRo\Herdr\Facades\Herdr}
  * facade.
  */
 class HerdrManager

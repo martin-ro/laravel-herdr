@@ -1,25 +1,25 @@
 <?php
 
-namespace Herdr\Facades;
+namespace MartinRo\Herdr\Facades;
 
-use Herdr\Data\Agent;
-use Herdr\Data\Pane;
-use Herdr\Data\Result;
-use Herdr\Data\Tab;
-use Herdr\Data\Workspace;
-use Herdr\HerdrManager;
-use Herdr\Resources\Agents;
-use Herdr\Resources\EventStream;
-use Herdr\Resources\Panes;
-use Herdr\Resources\Plugins;
-use Herdr\Resources\Server;
-use Herdr\Resources\Tabs;
-use Herdr\Resources\Workspaces;
-use Herdr\Resources\Worktrees;
+use MartinRo\Herdr\Data\Agent;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\Data\Result;
+use MartinRo\Herdr\Data\Tab;
+use MartinRo\Herdr\Data\Workspace;
+use MartinRo\Herdr\HerdrManager;
+use MartinRo\Herdr\Resources\Agents;
+use MartinRo\Herdr\Resources\EventStream;
+use MartinRo\Herdr\Resources\Panes;
+use MartinRo\Herdr\Resources\Plugins;
+use MartinRo\Herdr\Resources\Server;
+use MartinRo\Herdr\Resources\Tabs;
+use MartinRo\Herdr\Resources\Workspaces;
+use MartinRo\Herdr\Resources\Worktrees;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static \Herdr\Connection connection()
+ * @method static \MartinRo\Herdr\Connection connection()
  * @method static HerdrManager session(string $name)
  * @method static array call(string $method, array $params = [])
  * @method static Result result(string $method, array $params = [])

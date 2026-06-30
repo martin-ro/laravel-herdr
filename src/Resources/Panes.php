@@ -1,10 +1,10 @@
 <?php
 
-namespace Herdr\Resources;
+namespace MartinRo\Herdr\Resources;
 
-use Herdr\Connection;
-use Herdr\Data\Pane;
-use Herdr\Exceptions\RequestException;
+use MartinRo\Herdr\Connection;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\Exceptions\RequestException;
 use Illuminate\Support\Collection;
 
 /**

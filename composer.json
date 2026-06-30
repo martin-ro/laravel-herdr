@@ -22,7 +22,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Herdr\\": "src/"
+            "MartinRo\\Herdr\\": "src/"
         },
         "files": [
             "src/helpers.php"
@@ -30,16 +30,16 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Herdr\\Tests\\": "tests/"
+            "MartinRo\\Herdr\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Herdr\\HerdrServiceProvider"
+                "MartinRo\\Herdr\\HerdrServiceProvider"
             ],
             "aliases": {
-                "Herdr": "Herdr\\Facades\\Herdr"
+                "Herdr": "MartinRo\\Herdr\\Facades\\Herdr"
             }
         }
     },

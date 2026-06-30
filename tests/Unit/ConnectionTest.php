@@ -1,13 +1,13 @@
 <?php
 
-namespace Herdr\Tests\Unit;
+namespace MartinRo\Herdr\Tests\Unit;
 
-use Herdr\Connection;
-use Herdr\Exceptions\ConnectionException;
-use Herdr\Exceptions\RequestException;
-use Herdr\Testing\FakeResponse;
-use Herdr\Transport\FakeTransport;
-use Herdr\Transport\Transport;
+use MartinRo\Herdr\Connection;
+use MartinRo\Herdr\Exceptions\ConnectionException;
+use MartinRo\Herdr\Exceptions\RequestException;
+use MartinRo\Herdr\Testing\FakeResponse;
+use MartinRo\Herdr\Transport\FakeTransport;
+use MartinRo\Herdr\Transport\Transport;
 use PHPUnit\Framework\TestCase;
 
 class ConnectionTest extends TestCase

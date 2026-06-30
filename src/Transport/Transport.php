@@ -1,12 +1,12 @@
 <?php
 
-namespace Herdr\Transport;
+namespace MartinRo\Herdr\Transport;
 
 /**
  * A bidirectional, newline-delimited message transport to a Herdr socket.
  *
  * Implementations deal purely in whole JSON lines (without the trailing "\n");
- * framing, encoding and request/response correlation live in {@see \Herdr\Connection}.
+ * framing, encoding and request/response correlation live in {@see \MartinRo\Herdr\Connection}.
  */
 interface Transport
 {

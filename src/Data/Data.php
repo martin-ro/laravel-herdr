@@ -1,10 +1,10 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 use ArrayAccess;
-use Herdr\Connection;
-use Herdr\Exceptions\HerdrException;
+use MartinRo\Herdr\Connection;
+use MartinRo\Herdr\Exceptions\HerdrException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;

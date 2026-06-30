@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 /**
  * A pushed Herdr event, e.g. {"type":"pane.agent_status_changed","pane_id":"w1:p1","agent_status":"blocked"}.

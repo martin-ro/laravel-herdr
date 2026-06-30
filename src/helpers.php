@@ -1,7 +1,7 @@
 <?php
 
-use Herdr\Data\Pane;
-use Herdr\HerdrManager;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\HerdrManager;
 
 if (! function_exists('herdr')) {
     /**

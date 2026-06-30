@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr;
+namespace MartinRo\Herdr;
 
-use Herdr\Transport\SocketTransport;
-use Herdr\Transport\Transport;
+use MartinRo\Herdr\Transport\SocketTransport;
+use MartinRo\Herdr\Transport\Transport;
 
 /**
  * Builds {@see Connection} instances, resolving which socket to talk to from

@@ -1,8 +1,8 @@
 <?php
 
-namespace Herdr\Transport;
+namespace MartinRo\Herdr\Transport;
 
-use Herdr\Exceptions\ConnectionException;
+use MartinRo\Herdr\Exceptions\ConnectionException;
 
 /**
  * Talks to a real Herdr control socket: a Unix domain socket on Linux/macOS,

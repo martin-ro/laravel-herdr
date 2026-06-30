@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Exceptions;
+namespace MartinRo\Herdr\Exceptions;
 
 /**
  * Thrown for transport-level failures: the socket could not be opened, the

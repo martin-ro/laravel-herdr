@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr\Resources;
+namespace MartinRo\Herdr\Resources;
 
-use Herdr\Connection;
-use Herdr\Data\Worktree;
+use MartinRo\Herdr\Connection;
+use MartinRo\Herdr\Data\Worktree;
 use Illuminate\Support\Collection;
 
 /**

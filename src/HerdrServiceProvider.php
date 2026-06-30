@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr;
+namespace MartinRo\Herdr;
 
 use Illuminate\Support\ServiceProvider;
 

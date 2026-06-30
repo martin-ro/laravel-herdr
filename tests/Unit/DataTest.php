@@ -1,10 +1,10 @@
 <?php
 
-namespace Herdr\Tests\Unit;
+namespace MartinRo\Herdr\Tests\Unit;
 
-use Herdr\Data\Pane;
-use Herdr\Data\Result;
-use Herdr\Data\Workspace;
+use MartinRo\Herdr\Data\Pane;
+use MartinRo\Herdr\Data\Result;
+use MartinRo\Herdr\Data\Workspace;
 use PHPUnit\Framework\TestCase;
 
 class DataTest extends TestCase

@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 use Illuminate\Support\Collection;
 

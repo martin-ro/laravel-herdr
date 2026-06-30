@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Exceptions;
+namespace MartinRo\Herdr\Exceptions;
 
 use RuntimeException;
 

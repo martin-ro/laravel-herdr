@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 /**
  * A live Herdr git worktree. Worktrees have no id; they are identified by their

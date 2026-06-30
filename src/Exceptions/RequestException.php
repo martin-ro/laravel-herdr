@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Exceptions;
+namespace MartinRo\Herdr\Exceptions;
 
 /**
  * Thrown when Herdr responds to a request with an `error` payload, e.g.

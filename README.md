@@ -11,7 +11,7 @@ all from PHP.
 > on the same machine. This package speaks that protocol for you.
 
 ```php
-use Herdr\Facades\Herdr;
+use MartinRo\Herdr\Facades\Herdr;
 
 // Split the focused pane, run the test suite in the new pane, read the output.
 $pane = Herdr::pane()->split('right', ratio: 0.4);
@@ -76,12 +76,12 @@ php artisan vendor:publish --tag=herdr-config
 ## Usage
 
 Everything hangs off the `Herdr` facade (or the `herdr()` helper, or
-type-hinting `Herdr\HerdrManager`).
+type-hinting `MartinRo\Herdr\HerdrManager`).
 
 ### Workspaces, tabs, panes
 
 ```php
-use Herdr\Facades\Herdr;
+use MartinRo\Herdr\Facades\Herdr;
 
 Herdr::workspaces()->all();              // Collection<Workspace>
 Herdr::workspaces()->focused();          // ?Workspace
@@ -194,7 +194,7 @@ Herdr pushes events over the socket after you subscribe. Because reading events
 command or queue worker, not a web request.
 
 ```php
-Herdr::events()->listen(function (Herdr\Data\Event $event) {
+Herdr::events()->listen(function (MartinRo\Herdr\Data\Event $event) {
     if ($event->is('pane.agent_status_changed') && $event->agent_status === 'blocked') {
         logger()->warning("Agent blocked in {$event->paneId()}");
     }
@@ -239,8 +239,8 @@ are never lost.
 ## Error handling
 
 ```php
-use Herdr\Exceptions\ConnectionException; // socket couldn't open / closed / timed out
-use Herdr\Exceptions\RequestException;    // Herdr replied with an { error } payload
+use MartinRo\Herdr\Exceptions\ConnectionException; // socket couldn't open / closed / timed out
+use MartinRo\Herdr\Exceptions\RequestException;    // Herdr replied with an { error } payload
 
 try {
     Herdr::pane('w9:p9')->focus();
@@ -266,8 +266,8 @@ Fake the transport with `Herdr::fake()` — no socket required. Stub responses b
 method name and assert what was sent, just like `Http::fake()`.
 
 ```php
-use Herdr\Facades\Herdr;
-use Herdr\Testing\FakeResponse;
+use MartinRo\Herdr\Facades\Herdr;
+use MartinRo\Herdr\Testing\FakeResponse;
 
 Herdr::fake([
     'workspace.list' => ['workspaces' => [['workspace_id' => 'w1', 'label' => 'api']]],
@@ -291,7 +291,7 @@ Drive the event stream in tests by queuing events:
 Herdr::fake(['events.subscribe' => ['type' => 'subscribed']]);
 Herdr::pushEvent(['type' => 'pane.exited', 'pane_id' => 'w1:p1']);
 
-$event = Herdr::events()->next();        // Herdr\Data\Event
+$event = Herdr::events()->next();        // MartinRo\Herdr\Data\Event
 ```
 
 Run the package's own suite:

@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr\Testing;
+namespace MartinRo\Herdr\Testing;
 
 /**
- * A scripted reply used with {@see \Herdr\HerdrManager::fake()}. Lets a stub
+ * A scripted reply used with {@see \MartinRo\Herdr\HerdrManager::fake()}. Lets a stub
  * return either a successful result or a Herdr-style error.
  */
 class FakeResponse

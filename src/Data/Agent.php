@@ -1,6 +1,6 @@
 <?php
 
-namespace Herdr\Data;
+namespace MartinRo\Herdr\Data;
 
 /**
  * A live Herdr agent. Agents have no id of their own; they are addressed by a

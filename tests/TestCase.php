@@ -1,9 +1,9 @@
 <?php
 
-namespace Herdr\Tests;
+namespace MartinRo\Herdr\Tests;
 
-use Herdr\Facades\Herdr;
-use Herdr\HerdrServiceProvider;
+use MartinRo\Herdr\Facades\Herdr;
+use MartinRo\Herdr\HerdrServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra

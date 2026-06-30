@@ -1,10 +1,10 @@
 <?php
 
-namespace Herdr\Resources;
+namespace MartinRo\Herdr\Resources;
 
-use Herdr\Connection;
-use Herdr\Data\Event;
-use Herdr\Data\Result;
+use MartinRo\Herdr\Connection;
+use MartinRo\Herdr\Data\Event;
+use MartinRo\Herdr\Data\Result;
 
 /**
  * Subscribe to and consume Herdr's pushed event stream.
