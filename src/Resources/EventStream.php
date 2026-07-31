@@ -27,6 +27,11 @@ class EventStream
      * associative filter (["type" => "pane.agent_status_changed",
      * "pane_id" => "w1:p1", "agent_status" => "blocked"]).
      *
+     * Subscription types use dotted names. The data-bearing types require
+     * scope fields: "pane.agent_status_changed" and "pane.scroll_changed"
+     * require "pane_id"; "pane.output_matched" requires "pane_id", "source"
+     * and a "match" object ({type: substring|regex, value}).
+     *
      * @param  array<int, string|array<string, mixed>>  $subscriptions
      */
     public function subscribe(array $subscriptions): Result
@@ -98,6 +103,31 @@ class EventStream
         }
 
         return null;
+    }
+
+    /**
+     * Block server-side until a single matching event occurs (events.wait).
+     * Unlike the streaming methods this is a one-shot request on its own
+     * connection; the server holds the request until the event fires or the
+     * timeout elapses (error code "timeout").
+     *
+     * Event names use underscores here (the EventMatch form), e.g.
+     * waitFor('pane_agent_status_changed', ['pane_id' => 'w1:p1',
+     * 'agent_status' => 'idle']). As of Herdr 0.7.5 the server only supports
+     * pane agent-status matches; other match kinds return
+     * "unsupported_event_wait_match".
+     *
+     * @param  array<string, mixed>  $scope  e.g. ['pane_id' => 'w1:p1']
+     */
+    public function waitFor(string $event, array $scope = [], ?int $timeoutMs = null): Event
+    {
+        $params = ['match_event' => array_merge(['event' => Event::normalizeName($event)], $scope)];
+
+        if ($timeoutMs !== null) {
+            $params['timeout_ms'] = $timeoutMs;
+        }
+
+        return Event::fromResult($this->connection->request('events.wait', $params), $this->connection);
     }
 
     /**

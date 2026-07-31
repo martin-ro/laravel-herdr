@@ -70,13 +70,40 @@ class Tab extends Data
     }
 
     /**
-     * Panes belonging to this tab (pane.list scoped to it).
+     * Move this tab to a new position within its workspace (tab.move).
+     */
+    public function move(int $insertIndex): static
+    {
+        $this->call('tab.move', ['insert_index' => $insertIndex]);
+
+        return $this;
+    }
+
+    /**
+     * Panes belonging to this tab. pane.list only filters by workspace, so
+     * this lists the workspace and narrows to the tab locally.
      *
      * @return Collection<int, Pane>
      */
     public function panes(): Collection
     {
-        return Pane::collectionFromResult($this->call('pane.list'), $this->connection);
+        if ($this->id() !== null && $this->get('workspace_id') === null) {
+            $this->refresh();
+        }
+
+        $panes = Pane::collectionFromResult(
+            $this->connection()->request('pane.list', array_filter(
+                ['workspace_id' => $this->get('workspace_id')],
+                fn ($v) => $v !== null,
+            )),
+            $this->connection,
+        );
+
+        $tabId = $this->id();
+
+        return $tabId === null
+            ? $panes
+            : $panes->filter(fn (Pane $pane) => $pane->tabId() === $tabId)->values();
     }
 
     /**

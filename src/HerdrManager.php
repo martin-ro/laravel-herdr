@@ -9,6 +9,8 @@ use MartinRo\Herdr\Data\Tab;
 use MartinRo\Herdr\Data\Workspace;
 use MartinRo\Herdr\Resources\Agents;
 use MartinRo\Herdr\Resources\EventStream;
+use MartinRo\Herdr\Resources\Integrations;
+use MartinRo\Herdr\Resources\Layouts;
 use MartinRo\Herdr\Resources\Panes;
 use MartinRo\Herdr\Resources\Plugins;
 use MartinRo\Herdr\Resources\Server;
@@ -96,6 +98,20 @@ class HerdrManager
         return $this->result('ping');
     }
 
+    /**
+     * The full session snapshot in one call (session.snapshot): workspaces,
+     * tabs, panes, agents, layouts and focus state.
+     */
+    public function snapshot(): Result
+    {
+        $result = $this->call('session.snapshot');
+
+        return Result::fromResult(
+            is_array($result['snapshot'] ?? null) ? $result['snapshot'] : $result,
+            $this->connection,
+        );
+    }
+
     /* ----------------------------------------------------------------------
      | Resource accessors
      |---------------------------------------------------------------------- */
@@ -139,7 +155,8 @@ class HerdrManager
     }
 
     /**
-     * A handle to an agent by target (terminal id, unique agent name, or pane id).
+     * A handle to an agent by target (unique agent name, or the id of the
+     * pane hosting it).
      */
     public function agent(?string $target = null): Agent
     {
@@ -154,6 +171,16 @@ class HerdrManager
     public function plugins(): Plugins
     {
         return new Plugins($this->connection);
+    }
+
+    public function layouts(): Layouts
+    {
+        return new Layouts($this->connection);
+    }
+
+    public function integrations(): Integrations
+    {
+        return new Integrations($this->connection);
     }
 
     public function events(): EventStream
@@ -197,6 +224,14 @@ class HerdrManager
         }
 
         return $this->result('client.window_title.set', ['title' => $title]);
+    }
+
+    /**
+     * Close the currently open popup pane, if any (popup.close).
+     */
+    public function closePopup(): Result
+    {
+        return $this->result('popup.close');
     }
 
     /* ----------------------------------------------------------------------

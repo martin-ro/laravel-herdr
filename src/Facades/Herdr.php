@@ -10,6 +10,8 @@ use MartinRo\Herdr\Data\Workspace;
 use MartinRo\Herdr\HerdrManager;
 use MartinRo\Herdr\Resources\Agents;
 use MartinRo\Herdr\Resources\EventStream;
+use MartinRo\Herdr\Resources\Integrations;
+use MartinRo\Herdr\Resources\Layouts;
 use MartinRo\Herdr\Resources\Panes;
 use MartinRo\Herdr\Resources\Plugins;
 use MartinRo\Herdr\Resources\Server;
@@ -24,6 +26,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static array call(string $method, array $params = [])
  * @method static Result result(string $method, array $params = [])
  * @method static Result ping()
+ * @method static Result snapshot()
+ * @method static Result closePopup()
  * @method static Workspaces workspaces()
  * @method static Workspace workspace(?string $id = null)
  * @method static Tabs tabs()
@@ -34,6 +38,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static Agent agent(?string $id = null)
  * @method static Worktrees worktrees()
  * @method static Plugins plugins()
+ * @method static Layouts layouts()
+ * @method static Integrations integrations()
  * @method static EventStream events()
  * @method static Server server()
  * @method static Result notify(string $title, ?string $body = null, array $options = [])

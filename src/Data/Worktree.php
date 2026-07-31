@@ -2,6 +2,8 @@
 
 namespace MartinRo\Herdr\Data;
 
+use MartinRo\Herdr\Exceptions\HerdrException;
+
 /**
  * A live Herdr git worktree. Worktrees have no id; they are identified by their
  * path and/or branch, and the workspace they're open in is "open_workspace_id".
@@ -11,6 +13,9 @@ namespace MartinRo\Herdr\Data;
  * @property-read string|null $label
  * @property-read string|null $open_workspace_id
  * @property-read bool|null   $is_linked_worktree
+ * @property-read bool|null   $is_bare
+ * @property-read bool|null   $is_detached
+ * @property-read bool|null   $is_prunable
  */
 class Worktree extends Data
 {
@@ -46,6 +51,21 @@ class Worktree extends Data
         return (bool) $this->get('is_linked_worktree', false);
     }
 
+    public function isBare(): bool
+    {
+        return (bool) $this->get('is_bare', false);
+    }
+
+    public function isDetached(): bool
+    {
+        return (bool) $this->get('is_detached', false);
+    }
+
+    public function isPrunable(): bool
+    {
+        return (bool) $this->get('is_prunable', false);
+    }
+
     /**
      * Open this worktree in a workspace (worktree.open).
      *
@@ -57,13 +77,25 @@ class Worktree extends Data
     }
 
     /**
-     * Remove this worktree (worktree.remove).
+     * Remove this worktree (worktree.remove). Herdr removes worktrees by the
+     * workspace they are open in, so this requires an open worktree.
      *
      * @param  array<string, mixed>  $params  e.g. ['force' => true]
+     *
+     * @throws HerdrException when the worktree is not open in any workspace
      */
     public function remove(array $params = []): void
     {
-        $this->call('worktree.remove', $params);
+        $workspaceId = $this->workspaceId();
+
+        if ($workspaceId === null) {
+            throw new HerdrException(
+                'worktree.remove requires the workspace the worktree is open in, '
+                .'but this worktree is not open in any workspace. Open it first.',
+            );
+        }
+
+        $this->connection()->request('worktree.remove', array_merge(['workspace_id' => $workspaceId], $params));
     }
 
     /**

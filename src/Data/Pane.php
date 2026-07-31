@@ -16,8 +16,17 @@ use Illuminate\Support\Collection;
  * @property-read string|null $foreground_cwd
  * @property-read string|null $agent
  * @property-read string|null $agent_status
+ * @property-read string|null $display_agent
+ * @property-read string|null $label
+ * @property-read string|null $title
+ * @property-read string|null $terminal_title
+ * @property-read string|null $terminal_title_stripped
  * @property-read bool|null   $focused
  * @property-read int|null    $revision
+ * @property-read array|null  $scroll        {offset_from_bottom, max_offset_from_bottom, viewport_rows}
+ * @property-read array|null  $state_labels
+ * @property-read array|null  $tokens
+ * @property-read array|null  $agent_session
  */
 class Pane extends Data
 {
@@ -73,6 +82,16 @@ class Pane extends Data
         return (bool) $this->get('focused', false);
     }
 
+    public function label(): ?string
+    {
+        return $this->get('label');
+    }
+
+    public function title(): ?string
+    {
+        return $this->get('title');
+    }
+
     /* ----------------------------------------------------------------------
      | Reading state
      |---------------------------------------------------------------------- */
@@ -91,12 +110,17 @@ class Pane extends Data
      * Read terminal output (pane.read). The result payload nests the read under
      * a "read" key, which is unwrapped here so ->text()/->lines() work directly.
      *
-     * @param  'visible'|'recent'|'recent-unwrapped'|string  $source
+     * @param  'visible'|'recent'|'recent_unwrapped'|'detection'|string  $source
      * @param  'text'|'ansi'|string  $format
+     * @param  bool|null  $stripAnsi  omit to use the server default for the format
      */
-    public function read(?int $lines = null, string $source = 'recent', string $format = 'text'): Result
+    public function read(?int $lines = null, string $source = 'recent', string $format = 'text', ?bool $stripAnsi = null): Result
     {
         $params = ['source' => $source, 'format' => $format];
+
+        if ($stripAnsi !== null) {
+            $params['strip_ansi'] = $stripAnsi;
+        }
 
         if ($lines !== null) {
             $params['lines'] = $lines;
@@ -108,17 +132,37 @@ class Pane extends Data
     }
 
     /**
-     * Block until output matching a pattern appears, or a timeout elapses
+     * Block until output containing a literal substring appears, or a timeout
+     * elapses (pane.wait_for_output).
+     *
+     * @param  array<string, mixed>  $options  e.g. ['source' => 'visible', 'lines' => 100,
+     *   'strip_ansi' => false, 'timeout_ms' => 10000]
+     */
+    public function waitForOutput(string $substring, array $options = []): Result
+    {
+        return $this->waitFor(['type' => 'substring', 'value' => $substring], $options);
+    }
+
+    /**
+     * Block until output matching a regex appears, or a timeout elapses
      * (pane.wait_for_output).
      *
      * @param  array<string, mixed>  $options
      */
-    public function waitForOutput(string $pattern, array $options = []): Result
+    public function waitForPattern(string $regex, array $options = []): Result
     {
-        return Result::fromResult(
-            $this->call('pane.wait_for_output', array_merge(['pattern' => $pattern], $options)),
-            $this->connection,
-        );
+        return $this->waitFor(['type' => 'regex', 'value' => $regex], $options);
+    }
+
+    /**
+     * @param  array<string, mixed>  $match
+     * @param  array<string, mixed>  $options
+     */
+    private function waitFor(array $match, array $options): Result
+    {
+        $params = array_merge(['source' => 'recent'], $options, ['match' => $match]);
+
+        return Result::fromResult($this->call('pane.wait_for_output', $params), $this->connection);
     }
 
     public function processInfo(): Result
@@ -129,6 +173,50 @@ class Pane extends Data
     public function edges(): Result
     {
         return Result::fromResult($this->call('pane.edges'), $this->connection);
+    }
+
+    /**
+     * The layout snapshot of the tab containing this pane (pane.layout).
+     */
+    public function layout(): Result
+    {
+        return Result::fromResult($this->call('pane.layout'), $this->connection);
+    }
+
+    /* ----------------------------------------------------------------------
+     | Graphics
+     |---------------------------------------------------------------------- */
+
+    /**
+     * Show an image in the pane (pane.graphics.set).
+     *
+     * @param  array<string, mixed>  $params  e.g.
+     *   ['format' => 'png', 'image_width' => 640, 'image_height' => 480,
+     *    'data_base64' => '...', 'placement' => ['grid_cols' => 40]]
+     */
+    public function setGraphics(array $params): static
+    {
+        $this->call('pane.graphics.set', $params);
+
+        return $this;
+    }
+
+    /**
+     * Clear pane graphics (pane.graphics.clear).
+     */
+    public function clearGraphics(): static
+    {
+        $this->call('pane.graphics.clear');
+
+        return $this;
+    }
+
+    /**
+     * Cell pixel metrics for graphics placement (pane.graphics.info).
+     */
+    public function graphicsInfo(): Result
+    {
+        return Result::fromResult($this->call('pane.graphics.info'), $this->connection);
     }
 
     /* ----------------------------------------------------------------------
@@ -201,7 +289,8 @@ class Pane extends Data
      |---------------------------------------------------------------------- */
 
     /**
-     * Split this pane and return the new pane (pane.split).
+     * Split this pane and return the new pane (pane.split). Targets the
+     * focused pane when this handle has no id.
      *
      * @param  'right'|'down'|string  $direction
      * @param  array<string, mixed>  $options  e.g. ['env' => [...], 'cwd' => '...', 'focus' => false]
@@ -214,7 +303,7 @@ class Pane extends Data
             $params['ratio'] = $ratio;
         }
 
-        return static::fromResult($this->call('pane.split', $params), $this->connection);
+        return static::fromResult($this->call('pane.split', $params, 'target_pane_id'), $this->connection);
     }
 
     public function focus(): static
@@ -241,14 +330,14 @@ class Pane extends Data
     }
 
     /**
-     * Zoom the pane (pane.zoom). With no arguments this toggles zoom; pass
-     * ['on' => true] / ['off' => true] to set it explicitly.
+     * Zoom the pane (pane.zoom). Toggles by default; pass 'on' or 'off' to
+     * set the zoom state explicitly.
      *
-     * @param  array<string, mixed>  $params
+     * @param  'toggle'|'on'|'off'|string  $mode
      */
-    public function zoom(array $params = []): static
+    public function zoom(string $mode = 'toggle'): static
     {
-        $this->call('pane.zoom', $params);
+        $this->call('pane.zoom', ['mode' => $mode]);
 
         return $this;
     }
@@ -283,23 +372,77 @@ class Pane extends Data
     public function swapWith(string $targetPaneId): static
     {
         $this->connection()->request('pane.swap', [
-            'source_pane' => $this->id(),
-            'target_pane' => $targetPaneId,
+            'source_pane_id' => $this->id(),
+            'target_pane_id' => $targetPaneId,
         ]);
 
         return $this;
     }
 
     /**
-     * Move this pane (pane.move), e.g. ['tab' => 'w1:t2', 'split' => 'down'].
+     * Move this pane to a destination (pane.move). The destination envelope is
+     * one of:
+     *   ['type' => 'tab', 'tab_id' => ..., 'split' => 'right'|'down', 'target_pane_id' => ?, 'ratio' => ?]
+     *   ['type' => 'new_tab', 'workspace_id' => ?, 'label' => ?]
+     *   ['type' => 'new_workspace', 'label' => ?, 'tab_label' => ?]
      *
-     * @param  array<string, mixed>  $params
+     * @param  array<string, mixed>  $destination
+     * @param  array<string, mixed>  $options  e.g. ['focus' => false]
      */
-    public function move(array $params): static
+    public function move(array $destination, array $options = []): static
     {
-        $this->call('pane.move', $params);
+        $this->call('pane.move', array_merge($options, ['destination' => $destination]));
 
         return $this;
+    }
+
+    /**
+     * Move this pane into an existing tab (pane.move, destination "tab").
+     *
+     * @param  'right'|'down'|string  $split
+     * @param  array<string, mixed>  $options  destination extras, e.g. ['target_pane_id' => ..., 'ratio' => 0.5]
+     */
+    public function moveToTab(string $tabId, string $split = 'right', array $options = [], ?bool $focus = null): static
+    {
+        return $this->moveTo(
+            array_merge(['type' => 'tab', 'tab_id' => $tabId, 'split' => $split], $options),
+            $focus,
+        );
+    }
+
+    /**
+     * Move this pane into a new tab (pane.move, destination "new_tab").
+     */
+    public function moveToNewTab(?string $workspaceId = null, ?string $label = null, ?bool $focus = null): static
+    {
+        return $this->moveTo([
+            'type' => 'new_tab',
+            'workspace_id' => $workspaceId,
+            'label' => $label,
+        ], $focus);
+    }
+
+    /**
+     * Move this pane into a new workspace (pane.move, destination "new_workspace").
+     */
+    public function moveToNewWorkspace(?string $label = null, ?string $tabLabel = null, ?bool $focus = null): static
+    {
+        return $this->moveTo([
+            'type' => 'new_workspace',
+            'label' => $label,
+            'tab_label' => $tabLabel,
+        ], $focus);
+    }
+
+    /**
+     * @param  array<string, mixed>  $destination
+     */
+    private function moveTo(array $destination, ?bool $focus): static
+    {
+        return $this->move(
+            array_filter($destination, fn ($v) => $v !== null),
+            $focus === null ? [] : ['focus' => $focus],
+        );
     }
 
     public function rename(string $label): static
@@ -318,7 +461,7 @@ class Pane extends Data
      *
      * @param  array<string, mixed>  $attributes  e.g.
      *   ['source' => 'custom:docs', 'agent' => 'docs-bot', 'state' => 'working',
-     *    'message' => 'building docs', 'custom_status' => 'indexing']
+     *    'message' => 'building docs']
      */
     public function reportAgent(array $attributes): static
     {
@@ -376,15 +519,17 @@ class Pane extends Data
 
     /**
      * Invoke a pane method, scoping it to this pane when an id is known. When
-     * no id is set the call targets Herdr's focused pane.
+     * no id is set the call targets Herdr's focused pane. Methods that address
+     * the pane under a different key (e.g. pane.split's target_pane_id) pass
+     * it as $idKey.
      *
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    protected function call(string $method, array $params = []): array
+    protected function call(string $method, array $params = [], string $idKey = 'pane_id'): array
     {
         if (($id = $this->id()) !== null) {
-            $params = array_merge(['pane_id' => $id], $params);
+            $params = array_merge([$idKey => $id], $params);
         }
 
         return $this->connection()->request($method, $params);
@@ -407,12 +552,25 @@ class Pane extends Data
      */
     public function siblings(): Collection
     {
-        return static::collectionFromResult(
-            $this->connection()->request('pane.list', array_filter([
-                'workspace_id' => $this->workspaceId(),
-                'tab_id' => $this->tabId(),
-            ])),
+        // An id-only handle knows neither its workspace nor its tab; hydrate
+        // first so the listing can actually be scoped.
+        if ($this->id() !== null && ($this->workspaceId() === null || $this->tabId() === null)) {
+            $this->refresh();
+        }
+
+        $panes = static::collectionFromResult(
+            $this->connection()->request('pane.list', array_filter(
+                ['workspace_id' => $this->workspaceId()],
+                fn ($v) => $v !== null,
+            )),
             $this->connection,
         );
+
+        // pane.list only filters by workspace; narrow to this tab locally.
+        $tabId = $this->tabId();
+
+        return $tabId === null
+            ? $panes
+            : $panes->filter(fn (Pane $pane) => $pane->tabId() === $tabId)->values();
     }
 }

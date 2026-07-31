@@ -118,49 +118,80 @@ $pane->sendKeys('ctrl+c');               // key combos: enter, esc, ctrl+c, f1..
 $pane->sendKeys(['g', 'g']);             // a sequence
 
 $pane->read(lines: 100)->text();         // recent output as a string
-$pane->read(source: 'recent-unwrapped')->lines();  // sources: visible|recent|recent-unwrapped
+$pane->read(source: 'recent_unwrapped')->lines();  // sources: visible|recent|recent_unwrapped|detection
+$pane->read(format: 'ansi');                       // raw output with escape sequences
+$pane->read(stripAnsi: false);                     // override the server's strip default
 
-$pane->waitForOutput('Compiled successfully');
+$pane->waitForOutput('Compiled successfully');            // literal substring
+$pane->waitForPattern('Tests:\s+\d+ passed', [            // regex
+    'timeout_ms' => 10000,
+]);
 
 $right = $pane->split('right', ratio: 0.33, options: [
     'env' => ['HERDR_ROLE' => 'tests'],
 ]);
 
-$pane->zoom();
+$pane->zoom();                           // toggle
+$pane->zoom('on');                       // or 'off'
 $pane->focus();
 $pane->rename('build');
+
+$pane->moveToTab('w1:t2', 'down');       // move into an existing tab
+$pane->moveToNewTab();                   // ...or a new tab
+$pane->moveToNewWorkspace('lab');        // ...or a new workspace
+
+$pane->layout();                         // the containing tab's layout snapshot
 $pane->close();
 ```
 
 ### Agents
 
-Agents have no id of their own — they're addressed by a **target** (a terminal
-id, a unique agent name, or a pane id). The `agent` field is the kind, e.g.
-`"claude"`.
+Agents are addressed by a **target**: their unique live **name**, or the id of
+the **pane** hosting them. The `agent` field is the kind, e.g. `"claude"`.
 
 ```php
 Herdr::agents()->all();                  // Collection<Agent>
-$agent = Herdr::agents()->start('claude', ['workspace_id' => 'wA', 'split' => 'right']);
 
-Herdr::agent('wA:p2')->send('summarise the failing test');  // target by pane id
-$agent = Herdr::agents()->get('term_abc123');               // ...or terminal id
+// Start an agent inside an existing pane. The name becomes its target.
+$pane = Herdr::pane()->split('right');
+$agent = Herdr::agents()->start('claude', 'reviewer', $pane, [
+    'args' => ['--continue'],
+]);
+
+// Prompt: Herdr types the text and presses Enter atomically. Optionally wait
+// server-side until the agent settles.
+$agent->prompt('summarise the failing test');
+$agent->prompt('fix it', until: 'idle', timeoutMs: 120000);
+
+Herdr::agent('reviewer')->sendKeys('esc');   // target by name
+Herdr::agent('wA:p2')->wait('idle');         // ...or by pane id
 
 $agent->read()->text();
 $agent->explain();
 $agent->focus();
 $agent->kind();                          // "claude"
-$agent->status();                        // idle|working|blocked|unknown
+$agent->name();                          // "reviewer"
+$agent->status();                        // idle|working|blocked|done|unknown
+```
+
+Declarative agent views filter and sort the sidebar's agent list:
+
+```php
+Herdr::agents()->setView('my-tool', [
+    'label'  => 'Blocked',
+    'filter' => ['op' => 'eq', 'field' => 'agent_status', 'value' => 'blocked'],
+]);
+Herdr::agents()->clearView('my-tool');
 ```
 
 Report agent state for a pane you control (e.g. from a custom CI runner):
 
 ```php
 Herdr::pane('w1:p1')->reportAgent([
-    'source'        => 'custom:ci',
-    'agent'         => 'ci-bot',
-    'state'         => 'working',
-    'message'       => 'running tests',
-    'custom_status' => 'phpunit',
+    'source'  => 'custom:ci',
+    'agent'   => 'ci-bot',
+    'state'   => 'working',
+    'message' => 'running tests',
 ]);
 ```
 
@@ -193,24 +224,67 @@ Herdr pushes events over the socket after you subscribe. Because reading events
 **blocks**, run an event loop on its own connection — typically an artisan
 command or queue worker, not a web request.
 
+Subscription types use dotted names (`pane.created`). The pushed envelopes use
+underscore names and nest the payload under `data`, with full info objects
+embedded where applicable; `$event->name()`, `$event->data()` and
+`$event->pane()` unwrap this for you. Data-bearing subscriptions require scope
+fields: `pane.agent_status_changed` and `pane.scroll_changed` require
+`pane_id`; `pane.output_matched` requires `pane_id`, `source` and a `match`.
+
 ```php
 Herdr::events()->listen(function (MartinRo\Herdr\Data\Event $event) {
-    if ($event->is('pane.agent_status_changed') && $event->agent_status === 'blocked') {
+    if ($event->is('pane_agent_status_changed') && $event->data()->agent_status === 'blocked') {
         logger()->warning("Agent blocked in {$event->paneId()}");
     }
     // return false to stop listening
 }, subscriptions: [
-    ['type' => 'pane.agent_status_changed', 'agent_status' => 'blocked'],
+    ['type' => 'pane.agent_status_changed', 'pane_id' => 'w1:p1', 'agent_status' => 'blocked'],
     'pane.exited',                         // a bare type string also works
 ]);
 ```
 
-Block until a single event arrives:
+Block until a single event arrives (server-side, on a one-shot request). As of
+Herdr 0.7.5 the server only supports pane agent-status matches here:
+
+```php
+$event = Herdr::events()->waitFor('pane_agent_status_changed', [
+    'pane_id'      => 'w1:p1',
+    'agent_status' => 'idle',
+], timeoutMs: 30000);
+```
+
+Or client-side over a subscription stream:
 
 ```php
 $event = Herdr::events()->wait(
     [['type' => 'pane.agent_status_changed', 'pane_id' => 'w1:p1', 'agent_status' => 'done']],
 );
+```
+
+### Session snapshot & layouts
+
+```php
+$snapshot = Herdr::snapshot();           // workspaces, tabs, panes, agents, layouts, focus
+$snapshot->protocol;                     // 17
+
+$layout = Herdr::layouts()->export();    // the focused tab's declarative layout
+Herdr::layouts()->apply($layout->get('layout.root'), ['tab_label' => 'restored']);
+Herdr::layouts()->setSplitRatio([false], 0.3, ['tab_id' => 'w1:t1']);
+```
+
+### Plugins & integrations
+
+```php
+Herdr::plugins()->all();
+Herdr::plugins()->link('/path/to/plugin', ['enabled' => true]);
+Herdr::plugins()->enable('picker');                       // by plugin id
+Herdr::plugins()->actions();                              // declared actions (all plugins)
+Herdr::plugins()->invoke('jump-back', 'picker');          // action id, plugin id
+Herdr::plugins()->logs('picker', limit: 20);
+Herdr::plugins()->openPane('picker', 'main', ['placement' => 'popup']);
+
+Herdr::integrations()->install('claude');                 // built-in agent integrations
+Herdr::closePopup();                                      // close an open popup pane
 ```
 
 ### Multiple sessions
@@ -225,8 +299,8 @@ Every documented method is reachable, but for anything not yet wrapped (or new
 Herdr methods) call the raw API directly:
 
 ```php
-$result = Herdr::call('pane.layout', ['pane_id' => 'w1:p1']);   // array
-$result = Herdr::result('server.agent_manifests')->toArray();   // Result wrapper
+$result = Herdr::call('pane.process_info', ['pane_id' => 'w1:p1']);  // array
+$result = Herdr::result('server.agent_manifests')->toArray();        // Result wrapper
 ```
 
 Returned `Data`/`Result` objects are permissive: typed accessors exist for the
@@ -288,8 +362,11 @@ Herdr::assertSentCount(2);
 Drive the event stream in tests by queuing events:
 
 ```php
-Herdr::fake(['events.subscribe' => ['type' => 'subscribed']]);
-Herdr::pushEvent(['type' => 'pane.exited', 'pane_id' => 'w1:p1']);
+Herdr::fake(['events.subscribe' => ['type' => 'subscription_started']]);
+Herdr::pushEvent([
+    'event' => 'pane_exited',
+    'data'  => ['type' => 'pane_exited', 'pane_id' => 'w1:p1'],
+]);
 
 $event = Herdr::events()->next();        // MartinRo\Herdr\Data\Event
 ```
@@ -307,9 +384,11 @@ vendor/bin/phpunit
 
 ```
 HerdrManager ──┬─ ping()/call()/result()        low-level escape hatch
+               ├─ snapshot()                      full session state in one call
                ├─ workspaces()/panes()/agents() … plural query resources
                ├─ pane()/workspace()/agent()    … live, actionable objects
-               ├─ events()                        subscribe + stream
+               ├─ layouts()/plugins()/integrations() … declarative & extension APIs
+               ├─ events()                        subscribe + stream, waitFor()
                └─ fake()/assertSent()             test doubles
 
 Connection      one socket per request; assigns ids, correlates responses;
@@ -333,7 +412,7 @@ Connection      one socket per request; assigns ids, correlates responses;
   working even where Herdr's response fields are undocumented or evolve.
 
 > Field names and the connection model in this package were verified against a
-> live **Herdr 0.7.1** server (socket protocol 14).
+> live **Herdr 0.7.5** server (socket protocol 17).
 
 ## License
 

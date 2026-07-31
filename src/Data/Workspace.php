@@ -15,6 +15,8 @@ use Illuminate\Support\Collection;
  * @property-read string|null $active_tab_id
  * @property-read string|null $agent_status
  * @property-read bool|null   $focused
+ * @property-read array|null  $tokens
+ * @property-read array|null  $worktree
  */
 class Workspace extends Data
 {
@@ -73,6 +75,34 @@ class Workspace extends Data
     public function close(): void
     {
         $this->call('workspace.close');
+    }
+
+    /**
+     * Move this workspace to a new position in the workspace list
+     * (workspace.move).
+     */
+    public function move(int $insertIndex): static
+    {
+        $this->call('workspace.move', ['insert_index' => $insertIndex]);
+
+        return $this;
+    }
+
+    /**
+     * Report workspace metadata tokens (workspace.report_metadata), e.g. from
+     * a tool that owns custom sidebar tokens for this workspace.
+     *
+     * @param  array<string, mixed>  $tokens
+     * @param  array<string, mixed>  $options  e.g. ['seq' => 3, 'ttl_ms' => 60000]
+     */
+    public function reportMetadata(string $source, array $tokens, array $options = []): static
+    {
+        $this->call('workspace.report_metadata', array_merge([
+            'source' => $source,
+            'tokens' => (object) $tokens,
+        ], $options));
+
+        return $this;
     }
 
     /**
