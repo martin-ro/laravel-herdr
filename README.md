@@ -1,5 +1,10 @@
 # Laravel Herdr
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/martin-ro/laravel-herdr.svg?style=flat-square)](https://packagist.org/packages/martin-ro/laravel-herdr)
+[![Tests](https://img.shields.io/github/actions/workflow/status/martin-ro/laravel-herdr/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/martin-ro/laravel-herdr/actions/workflows/tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/martin-ro/laravel-herdr.svg?style=flat-square)](https://packagist.org/packages/martin-ro/laravel-herdr)
+[![License](https://img.shields.io/packagist/l/martin-ro/laravel-herdr.svg?style=flat-square)](https://github.com/martin-ro/laravel-herdr/blob/main/LICENSE)
+
 A fluent, Laravel-style client for the [Herdr](https://herdr.dev) terminal
 workspace **socket API**. It gives you an Eloquent-flavoured way to drive
 workspaces, tabs, panes, agents and worktrees, and to react to Herdr events —
@@ -31,21 +36,8 @@ $output = $pane->waitForOutput('Tests:')->text();
 
 ## Installation
 
-This is a private package. Add the GitHub repository to your app's
-`composer.json`:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "git@github.com:martin-ro/laravel-herdr.git" }
-    ]
-}
-```
-
-Then require it:
-
 ```bash
-composer require martin-ro/laravel-herdr:dev-main
+composer require martin-ro/laravel-herdr
 ```
 
 The service provider and `Herdr` facade are auto-discovered. To tweak defaults,

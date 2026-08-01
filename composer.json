@@ -4,6 +4,11 @@
     "type": "library",
     "license": "MIT",
     "keywords": ["laravel", "herdr", "terminal", "socket", "multiplexer", "agents"],
+    "homepage": "https://github.com/martin-ro/laravel-herdr",
+    "support": {
+        "issues": "https://github.com/martin-ro/laravel-herdr/issues",
+        "source": "https://github.com/martin-ro/laravel-herdr"
+    },
     "authors": [
         {
             "name": "Martin Roph",
