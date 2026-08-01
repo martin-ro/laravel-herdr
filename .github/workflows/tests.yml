@@ -44,6 +44,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          composer config policy.advisories.block false
           composer require "illuminate/contracts:^${{ matrix.laravel }}.0" "illuminate/support:^${{ matrix.laravel }}.0" --no-interaction --no-update
           composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
           composer update --prefer-dist --no-interaction --no-progress
