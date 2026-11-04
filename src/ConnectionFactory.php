@@ -26,14 +26,16 @@ class ConnectionFactory
      */
     public function make(?string $session = null): Connection
     {
-        $path = $this->resolvePath($session);
-        $connectTimeout = (float) ($this->config['connect_timeout'] ?? 5.0);
-        $readTimeout = $this->config['read_timeout'] ?? null;
+        return $this->connectTo($this->resolvePath($session));
+    }
 
-        return new Connection(
-            fn () => new SocketTransport($path, $connectTimeout, $readTimeout),
-            (string) ($this->config['id_prefix'] ?? 'req'),
-        );
+    /**
+     * Create a connection to the herdr-core socket. Core keeps a connection
+     * open for many calls, but a fresh one per request works the same way.
+     */
+    public function makeCore(): Connection
+    {
+        return $this->connectTo($this->resolveCorePath());
     }
 
     /**
@@ -70,6 +72,60 @@ class ConnectionFactory
         }
 
         return $this->basePath().'/herdr.sock';
+    }
+
+    /**
+     * Resolve the herdr-core socket the way core does. Precedence (highest first):
+     *   1. a configured core_socket_path (HC_SOCKET)
+     *   2. "$XDG_RUNTIME_DIR/herdr-core/<session>.sock"
+     *   3. "/run/user/<uid>/herdr-core/<session>.sock", when that runtime directory exists
+     *   4. "<XDG_STATE_HOME or ~/.local/state>/herdr-core/<session>/<session>.sock"
+     *
+     * The session is core_session (HC_SESSION), "default" when unset.
+     */
+    public function resolveCorePath(): string
+    {
+        $socketPath = $this->config['core_socket_path'] ?? null;
+
+        if (is_string($socketPath) && $socketPath !== '') {
+            return $socketPath;
+        }
+
+        $session = $this->config['core_session'] ?? null;
+        $session = is_string($session) && $session !== '' ? $session : 'default';
+
+        $runtime = getenv('XDG_RUNTIME_DIR') ?: $this->userRuntimeDirectory();
+
+        if (is_string($runtime) && $runtime !== '') {
+            return rtrim($runtime, '/').'/herdr-core/'.$session.'.sock';
+        }
+
+        $stateHome = getenv('XDG_STATE_HOME')
+            ?: rtrim((string) (getenv('HOME') ?: ''), '/').'/.local/state';
+
+        return rtrim($stateHome, '/').'/herdr-core/'.$session.'/'.$session.'.sock';
+    }
+
+    private function connectTo(string $path): Connection
+    {
+        $connectTimeout = (float) ($this->config['connect_timeout'] ?? 5.0);
+        $readTimeout = $this->config['read_timeout'] ?? null;
+
+        return new Connection(
+            fn () => new SocketTransport($path, $connectTimeout, $readTimeout),
+            (string) ($this->config['id_prefix'] ?? 'req'),
+        );
+    }
+
+    private function userRuntimeDirectory(): ?string
+    {
+        if (! function_exists('posix_getuid')) {
+            return null;
+        }
+
+        $directory = '/run/user/'.posix_getuid();
+
+        return is_dir($directory) ? $directory : null;
     }
 
     private function sessionSocket(string $session): string

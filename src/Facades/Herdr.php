@@ -2,6 +2,7 @@
 
 namespace MartinRo\Herdr\Facades;
 
+use MartinRo\Herdr\Core;
 use MartinRo\Herdr\Data\Agent;
 use MartinRo\Herdr\Data\Pane;
 use MartinRo\Herdr\Data\Result;
@@ -42,6 +43,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static Integrations integrations()
  * @method static EventStream events()
  * @method static Server server()
+ * @method static Core core()
  * @method static Result notify(string $title, ?string $body = null, array $options = [])
  * @method static Result windowTitle(?string $title)
  * @method static HerdrManager fake(array $stubs = [])

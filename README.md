@@ -58,10 +58,18 @@ php artisan vendor:publish --tag=herdr-config
 | `base_path`       | `HERDR_CONFIG_PATH`     | `~/.config/herdr`                | Where Herdr keeps its sockets. |
 | `connect_timeout` | `HERDR_CONNECT_TIMEOUT` | `5.0`                            | Seconds to wait for the connection. |
 | `read_timeout`    | `HERDR_READ_TIMEOUT`    | `null` (block)                   | Seconds a single read may block. |
+| `core_socket_path`| `HC_SOCKET`             | resolved like core does          | Explicit herdr-core socket path. |
+| `core_session`    | `HC_SESSION`            | `default`                        | herdr-core session. |
 
 **Socket resolution order** (mirrors Herdr's CLI): an explicit
 `Herdr::session('name')` → `socket_path` → `session` → the default
 `~/.config/herdr/herdr.sock`.
+
+**herdr-core socket resolution order** (mirrors `hc`): `core_socket_path` →
+`$XDG_RUNTIME_DIR/herdr-core/<session>.sock` →
+`/run/user/<uid>/herdr-core/<session>.sock` (when that directory exists) →
+`~/.local/state/herdr-core/<session>/<session>.sock`. On Windows, set
+`HC_SOCKET` to the named pipe.
 
 ---
 
@@ -278,6 +286,60 @@ Herdr::plugins()->openPane('picker', 'main', ['placement' => 'popup']);
 Herdr::integrations()->install('claude');                 // built-in agent integrations
 Herdr::closePopup();                                      // close an open popup pane
 ```
+
+### herdr-core (the Herdr desktop app)
+
+The Herdr desktop app runs its agents in herdr-core (`hc`), not in the TUI
+server. The two do not share agents. `Herdr::core()` speaks the core API
+(JSON-RPC over the core socket). Core runs terminals. Spaces and tabs belong
+to the app.
+
+```php
+$core = Herdr::core();
+
+// Agents are terminals whose program reports a status (OSC 7501).
+$agents = $core->terminals()->all()->filter(fn ($terminal) => $terminal->status() !== null);
+
+$terminal = $core->terminals()->find('t7');   // ?Terminal, by address or name
+$terminal->status();                          // idle, working, done, blocked, error
+$terminal->app();                             // e.g. "claude-code"
+$terminal->label('where');                    // e.g. "api / 1", set by the app
+
+$terminal->read()->text();                    // the screen as plain text
+$terminal->send('Fix the failing test');      // paste and press Enter
+$terminal->send('yes', force: true);          // also into a blocked program
+$terminal->keys(['shift+tab']);               // named keys
+$terminal->kill();                            // end the program
+
+$core->status()->get('version');              // server.status
+$core->doc('herdr-app')->get('value.spaces'); // the app's spaces and tabs
+$core->call('terminal.wait', ['terminal' => 't7']);
+```
+
+`read($lines)` with history scrolls a full-screen app (such as Claude Code)
+with the mouse wheel to read it, then scrolls it back. Keep the default of
+0 lines when you poll.
+
+To start an agent that the desktop app shows, give it the app's space id. The
+app shows it in a new tab of that space (or in the tab named by `herdr.tab`).
+A space id that the app does not know becomes a new space. A terminal without
+these labels stays hidden in the app.
+
+```php
+$core->terminals()->run(['claude', 'Review the open PR'], [
+    'cwd' => '/srv/api',
+    'labels' => ['herdr.space' => 'sp1', 'herdr.seen' => '0'],
+    'keep' => true,
+    'no_parent' => true,
+]);
+```
+
+Core starts programs with the environment of whoever started core. If the
+program is not on that PATH, run it through a login shell:
+`['bash', '-lc', 'exec "$0" "$@"', 'claude', 'Review the open PR']`.
+
+`Herdr::fake()` also fakes core, so stub core methods by name:
+`Herdr::fake(['terminal.list' => ['terminals' => [...]]])`.
 
 ### Multiple sessions
 

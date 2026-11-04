@@ -5,6 +5,8 @@ namespace MartinRo\Herdr\Exceptions;
 /**
  * Thrown when Herdr responds to a request with an `error` payload, e.g.
  * {"id":"req_1","error":{"code":"not_found","message":"pane not found"}}.
+ * herdr-core sends JSON-RPC errors instead, with the stable kind in `data`:
+ * {"code":-32000,"message":"no terminal t9","data":{"kind":"not_found"}}.
  */
 class RequestException extends HerdrException
 {
@@ -26,7 +28,7 @@ class RequestException extends HerdrException
     public static function fromError(array $error, string $method): self
     {
         return new self(
-            (string) ($error['code'] ?? 'error'),
+            (string) ($error['data']['kind'] ?? $error['code'] ?? 'error'),
             (string) ($error['message'] ?? 'Unknown Herdr error.'),
             $method,
             $error,
@@ -34,7 +36,8 @@ class RequestException extends HerdrException
     }
 
     /**
-     * The Herdr error code, e.g. "pane_not_found", "invalid_request".
+     * The Herdr error code, e.g. "pane_not_found", "invalid_request", or the
+     * herdr-core error kind, e.g. "not_found", "finished", "blocked".
      */
     public function code(): string
     {
