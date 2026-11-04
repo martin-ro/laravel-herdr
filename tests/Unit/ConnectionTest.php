@@ -88,6 +88,48 @@ class ConnectionTest extends TestCase
         }
     }
 
+    public function test_it_reads_the_kind_of_a_herdr_core_error(): void
+    {
+        $transport = new class implements Transport
+        {
+            private ?string $reply = null;
+
+            public function write(string $line): void
+            {
+                $id = json_decode($line, true)['id'];
+
+                $this->reply = json_encode([
+                    'jsonrpc' => '2.0',
+                    'id' => $id,
+                    'error' => ['code' => -32000, 'message' => 'no terminal "t9"', 'data' => ['kind' => 'not_found', 'hint' => 'see `hc ls --all`']],
+                ]);
+            }
+
+            public function readLine(): ?string
+            {
+                return $this->reply;
+            }
+
+            public function isConnected(): bool
+            {
+                return true;
+            }
+
+            public function close(): void
+            {
+            }
+        };
+
+        try {
+            (new Connection($transport))->request('terminal.get', ['terminal' => 't9']);
+            $this->fail('Expected a RequestException.');
+        } catch (RequestException $e) {
+            $this->assertSame('not_found', $e->code());
+            $this->assertTrue($e->isNotFound());
+            $this->assertStringContainsString('no terminal "t9"', $e->getMessage());
+        }
+    }
+
     public function test_events_stream_over_a_held_connection(): void
     {
         $transport = new FakeTransport([

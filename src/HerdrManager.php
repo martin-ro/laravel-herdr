@@ -30,6 +30,8 @@ class HerdrManager
 {
     private Connection $connection;
 
+    private ?Connection $coreConnection = null;
+
     private ?FakeTransport $fakeTransport = null;
 
     public function __construct(
@@ -193,6 +195,15 @@ class HerdrManager
         return new Server($this->connection);
     }
 
+    /**
+     * The herdr-core API, the backend of the Herdr desktop app. The desktop app
+     * and the TUI don't share agents: each one runs its own.
+     */
+    public function core(): Core
+    {
+        return new Core($this->coreConnection ??= $this->factory->makeCore());
+    }
+
     /* ----------------------------------------------------------------------
      | Convenience commands
      |---------------------------------------------------------------------- */
@@ -249,6 +260,7 @@ class HerdrManager
     {
         $this->fakeTransport = new FakeTransport($stubs);
         $this->connection = $this->factory->fromTransport($this->fakeTransport);
+        $this->coreConnection = $this->connection;
 
         return $this;
     }

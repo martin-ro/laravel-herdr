@@ -72,4 +72,22 @@ return [
 
     'id_prefix' => env('HERDR_ID_PREFIX', 'req'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | herdr-core socket
+    |--------------------------------------------------------------------------
+    |
+    | herdr-core (`hc`) runs the terminals of the Herdr desktop app; use it
+    | through Herdr::core(). Left null, the socket resolves like core does:
+    | "$XDG_RUNTIME_DIR/herdr-core/<session>.sock", then
+    | "/run/user/<uid>/herdr-core/<session>.sock", then
+    | "~/.local/state/herdr-core/<session>/<session>.sock". HC_SOCKET and
+    | HC_SESSION are the variables core itself respects.
+    |
+    */
+
+    'core_socket_path' => env('HC_SOCKET'),
+
+    'core_session' => env('HC_SESSION', 'default'),
+
 ];
